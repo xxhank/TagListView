@@ -14,7 +14,7 @@ import UIKit
 
 @IBDesignable
 public class TagListView: UIView {
-    
+
     @IBInspectable public var textColor: UIColor = UIColor.whiteColor() {
         didSet {
             for tagView in tagViews {
@@ -22,7 +22,15 @@ public class TagListView: UIView {
             }
         }
     }
-    
+
+    @IBInspectable public var selectedTextColor: UIColor = UIColor.whiteColor() {
+        didSet {
+            for tagView in tagViews {
+                tagView.selectedTextColor = selectedTextColor
+            }
+        }
+    }
+
     @IBInspectable public var tagBackgroundColor: UIColor = UIColor.grayColor() {
         didSet {
             for tagView in tagViews {
@@ -30,7 +38,7 @@ public class TagListView: UIView {
             }
         }
     }
-    
+
     @IBInspectable public var tagSelectedBackgroundColor: UIColor = UIColor.redColor() {
         didSet {
             for tagView in tagViews {
@@ -38,7 +46,7 @@ public class TagListView: UIView {
             }
         }
     }
-    
+
     @IBInspectable public var cornerRadius: CGFloat = 0 {
         didSet {
             for tagView in tagViews {
@@ -86,8 +94,14 @@ public class TagListView: UIView {
             rearrangeViews()
         }
     }
-    
-    public enum Alignment {
+
+    @IBInspectable public var marginLeading: CGFloat = 5 {
+        didSet {
+            rearrangeViews()
+        }
+    }
+
+    @objc public enum Alignment: Int {
         case Left
         case Center
         case Right
@@ -97,7 +111,27 @@ public class TagListView: UIView {
             rearrangeViews()
         }
     }
-    
+    @IBInspectable public var shadowColor: UIColor = UIColor.whiteColor() {
+        didSet {
+            rearrangeViews()
+        }
+    }
+    @IBInspectable public var shadowRadius: CGFloat = 0 {
+        didSet {
+            rearrangeViews()
+        }
+    }
+    @IBInspectable public var shadowOffset: CGSize = CGSizeZero {
+        didSet {
+            rearrangeViews()
+        }
+    }
+    @IBInspectable public var shadowOpacity: Float = 0 {
+        didSet {
+            rearrangeViews()
+        }
+    }
+
     public var textFont: UIFont = UIFont.systemFontOfSize(12) {
         didSet {
             for tagView in tagViews {
@@ -106,84 +140,181 @@ public class TagListView: UIView {
             rearrangeViews()
         }
     }
-    
+
+    @IBInspectable public var numberOfRows: Int = 0
+
     @IBOutlet public weak var delegate: TagListViewDelegate?
-    
-    var tagViews: [TagView] = []
-    var rowViews: [UIView] = []
-    var tagViewHeight: CGFloat = 0
-    var rows = 0 {
+    private(set) var tagViews: [TagView] = []
+    private(set) var tagBackgroundViews: [UIView] = []
+    private(set) var rowViews: [UIView] = []
+    private(set) var tagViewHeight: CGFloat = 0
+    private(set) var rows = 0 {
         didSet {
             invalidateIntrinsicContentSize()
         }
     }
-    
+
     // MARK: - Interface Builder
-    
+
     public override func prepareForInterfaceBuilder() {
         addTag("Welcome")
         addTag("to")
         addTag("TagListView").selected = true
     }
-    
+
     // MARK: - Layout
-    
+
     public override func layoutSubviews() {
         super.layoutSubviews()
-        
-        rearrangeViews()
-    }
-    
-    private func rearrangeViews() {
-        for tagView in tagViews {
-            tagView.removeFromSuperview()
+
+        if numberOfRows == 0 {
+            rearrangeViews()
         }
-        
-        for rowView in rowViews {
-            rowView.removeFromSuperview()
+        else {
+            rearrangeViewsWithMaxRows(numberOfRows)
+        }
+    }
+
+    private func rearrangeViewsWithMaxRows(numberOfRows: Int) {
+        let views = tagViews as [UIView] + tagBackgroundViews + rowViews
+        for view in views {
+            view.removeFromSuperview()
         }
         rowViews.removeAll(keepCapacity: true)
-        
+
+        var currentRow = 0
+        var currentRowTagCount = 0
+        var currentRowWidth: CGFloat = 0
+
+        let canvasHeight: CGFloat = frame.height;
+        let canvasWidth : CGFloat = frame.width - marginLeading - marginLeading;
+
+        for (_, tagView) in tagViews.enumerate() {
+            tagView.frame.size = tagView.intrinsicContentSize()
+            tagViewHeight = tagView.frame.height
+
+            if currentRowTagCount == 0 || currentRowWidth + tagView.frame.width + marginX > canvasWidth {
+                currentRow += 1
+                currentRowWidth = 0
+                currentRowTagCount = 0
+                currentRowWidth += tagView.frame.width + marginX
+            }
+            if currentRow > numberOfRows {
+                break
+            }
+        }
+
+        let realRows: CGFloat = CGFloat(currentRow - 1)
+        let contentHeight: CGFloat = realRows * (tagViewHeight + marginY) - marginY
+        let contentOffsetY: CGFloat = (canvasHeight - contentHeight) / (2.0)
+        currentRow = 0
+        currentRowTagCount = 0
+        currentRowWidth = 0
+        var currentRowView: UIView!
+
+        for (index, tagView) in tagViews.enumerate() {
+            tagView.frame.size = tagView.intrinsicContentSize()
+            tagViewHeight = tagView.frame.height
+
+            if currentRowTagCount == 0 || currentRowWidth + tagView.frame.width + marginX > canvasWidth {
+                currentRow += 1
+                currentRowWidth = 0
+                currentRowTagCount = 0
+                currentRowView = UIView()
+                currentRowView.frame.origin.y = CGFloat(currentRow - 1) * (tagViewHeight + marginY) + contentOffsetY
+
+                rowViews.append(currentRowView)
+                addSubview(currentRowView)
+            }
+
+            if currentRow > numberOfRows {
+                break
+            }
+
+            let tagBackgroundView = tagBackgroundViews[index]
+            tagBackgroundView.frame.origin = CGPoint(x: currentRowWidth, y: 0)
+            tagBackgroundView.frame.size = tagView.bounds.size
+            tagBackgroundView.layer.shadowColor = shadowColor.CGColor
+            tagBackgroundView.layer.shadowPath = UIBezierPath(roundedRect: tagBackgroundView.bounds, cornerRadius: cornerRadius).CGPath
+            tagBackgroundView.layer.shadowOffset = shadowOffset
+            tagBackgroundView.layer.shadowOpacity = shadowOpacity
+            tagBackgroundView.layer.shadowRadius = shadowRadius
+            tagBackgroundView.addSubview(tagView)
+            currentRowView.addSubview(tagBackgroundView)
+
+            currentRowTagCount++
+            currentRowWidth += tagView.frame.width + marginX
+
+            switch alignment {
+            case .Left:
+                currentRowView.frame.origin.x = marginLeading
+            case .Center:
+                currentRowView.frame.origin.x = (frame.width - (currentRowWidth - marginX)) / 2
+            case .Right:
+                currentRowView.frame.origin.x = frame.width - (currentRowWidth - marginX)
+            }
+            currentRowView.frame.size.width = currentRowWidth
+            currentRowView.frame.size.height = max(tagViewHeight, currentRowView.frame.height)
+        }
+        rows = min(numberOfRows, currentRow)
+    }
+
+    private func rearrangeViews() {
+        let views = tagViews as [UIView] + tagBackgroundViews + rowViews
+        for view in views {
+            view.removeFromSuperview()
+        }
+        rowViews.removeAll(keepCapacity: true)
+
         var currentRow = 0
         var currentRowView: UIView!
         var currentRowTagCount = 0
         var currentRowWidth: CGFloat = 0
-        for tagView in tagViews {
+        for (index, tagView) in tagViews.enumerate() {
             tagView.frame.size = tagView.intrinsicContentSize()
             tagViewHeight = tagView.frame.height
-            
+
             if currentRowTagCount == 0 || currentRowWidth + tagView.frame.width + marginX > frame.width {
                 currentRow += 1
                 currentRowWidth = 0
                 currentRowTagCount = 0
                 currentRowView = UIView()
                 currentRowView.frame.origin.y = CGFloat(currentRow - 1) * (tagViewHeight + marginY)
-                
+
                 rowViews.append(currentRowView)
                 addSubview(currentRowView)
             }
-            
-            tagView.frame.origin = CGPoint(x: currentRowWidth, y: 0)
-            currentRowView.addSubview(tagView)
+
+            let tagBackgroundView = tagBackgroundViews[index]
+            tagBackgroundView.frame.origin = CGPoint(x: currentRowWidth, y: 0)
+            tagBackgroundView.frame.size = tagView.bounds.size
+            tagBackgroundView.layer.shadowColor = shadowColor.CGColor
+            tagBackgroundView.layer.shadowPath = UIBezierPath(roundedRect: tagBackgroundView.bounds, cornerRadius: cornerRadius).CGPath
+            tagBackgroundView.layer.shadowOffset = shadowOffset
+            tagBackgroundView.layer.shadowOpacity = shadowOpacity
+            tagBackgroundView.layer.shadowRadius = shadowRadius
+            tagBackgroundView.addSubview(tagView)
+            currentRowView.addSubview(tagBackgroundView)
+
             currentRowTagCount++
             currentRowWidth += tagView.frame.width + marginX
-            
+
             switch alignment {
             case .Left:
                 currentRowView.frame.origin.x = 0
             case .Center:
-                currentRowView.frame.origin.x = (frame.size.width - (currentRowWidth - marginX)) / 2
+                currentRowView.frame.origin.x = (frame.width - (currentRowWidth - marginX)) / 2
             case .Right:
-                currentRowView.frame.origin.x = frame.size.width - (currentRowWidth - marginX)
+                currentRowView.frame.origin.x = frame.width - (currentRowWidth - marginX)
             }
             currentRowView.frame.size.width = currentRowWidth
-            currentRowView.frame.size.height = max(tagViewHeight, currentRowView.frame.size.height)
+            currentRowView.frame.size.height = max(tagViewHeight, currentRowView.frame.height)
         }
         rows = currentRow
     }
-    
+
     // MARK: - Manage tags
-    
+
     public override func intrinsicContentSize() -> CGSize {
         var height = CGFloat(rows) * (tagViewHeight + marginY)
         if rows > 0 {
@@ -191,11 +322,12 @@ public class TagListView: UIView {
         }
         return CGSizeMake(frame.width, height)
     }
-    
+
     public func addTag(title: String) -> TagView {
         let tagView = TagView(title: title)
-        
+
         tagView.textColor = textColor
+        tagView.selectedTextColor = selectedTextColor
         tagView.tagBackgroundColor = tagBackgroundColor
         tagView.tagSelectedBackgroundColor = tagSelectedBackgroundColor
         tagView.cornerRadius = cornerRadius
@@ -204,52 +336,56 @@ public class TagListView: UIView {
         tagView.paddingY = paddingY
         tagView.paddingX = paddingX
         tagView.textFont = textFont
-        
-        tagView.addTarget(self, action: "tagPressed:", forControlEvents: UIControlEvents.TouchUpInside)
-        
+
+        tagView.addTarget(self, action: "tagPressed:", forControlEvents: .TouchUpInside)
+
         return addTagView(tagView)
     }
-    
+
     public func addTagView(tagView: TagView) -> TagView {
         tagViews.append(tagView)
+        tagBackgroundViews.append(UIView(frame: tagView.bounds))
         rearrangeViews()
-        
+
         return tagView
     }
-    
+
     public func removeTag(title: String) {
         // loop the array in reversed order to remove items during loop
-        for index in (tagViews.count - 1).stride(through: 0, by: -1) {
+        for index in(tagViews.count - 1).stride(through: 0, by: -1) {
             let tagView = tagViews[index]
             if tagView.currentTitle == title {
                 removeTagView(tagView)
             }
         }
     }
-    
+
     public func removeTagView(tagView: TagView) {
         tagView.removeFromSuperview()
         if let index = tagViews.indexOf(tagView) {
             tagViews.removeAtIndex(index)
+            tagBackgroundViews.removeAtIndex(index)
         }
-        
+
         rearrangeViews()
     }
-    
+
     public func removeAllTags() {
-        for tagView in tagViews {
-            tagView.removeFromSuperview()
+        let views = tagViews as [UIView] + tagBackgroundViews
+        for view in views {
+            view.removeFromSuperview()
         }
         tagViews = []
+        tagBackgroundViews = []
         rearrangeViews()
     }
 
     public func selectedTags() -> [TagView] {
         return tagViews.filter() { $0.selected == true }
     }
-    
+
     // MARK: - Events
-    
+
     func tagPressed(sender: TagView!) {
         sender.onTap?(sender)
         delegate?.tagPressed?(sender.currentTitle ?? "", tagView: sender, sender: self)

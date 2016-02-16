@@ -29,7 +29,12 @@ public class TagView: UIButton {
     }
     @IBInspectable var textColor: UIColor = UIColor.whiteColor() {
         didSet {
-            setTitleColor(textColor, forState: UIControlState.Normal)
+            setTitleColor(textColor, forState: .Normal)
+        }
+    }
+    @IBInspectable var selectedTextColor: UIColor = UIColor.whiteColor() {
+        didSet {
+            setTitleColor(selected ? selectedTextColor : textColor, forState: .Normal)
         }
     }
     @IBInspectable var paddingY: CGFloat = 2 {
@@ -68,8 +73,10 @@ public class TagView: UIButton {
         didSet {
             if selected {
                 backgroundColor = tagSelectedBackgroundColor
+                setTitleColor(selectedTextColor, forState: .Normal)
             } else {
                 backgroundColor = tagBackgroundColor
+                setTitleColor(textColor, forState: .Normal)
             }
         }
     }
@@ -87,7 +94,7 @@ public class TagView: UIButton {
     
     init(title: String) {
         super.init(frame: CGRectZero)
-        setTitle(title, forState: UIControlState.Normal)
+        setTitle(title, forState: .Normal)
         
         setupView()
     }
