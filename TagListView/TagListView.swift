@@ -12,7 +12,7 @@ import UIKit
     optional func tagPressed(title: String, tagView: TagView, sender: TagListView) -> Void
 }
 
-@IBDesignable
+// @IBDesignable
 public class TagListView: UIView {
 
     @IBInspectable public var textColor: UIColor = UIColor.whiteColor() {

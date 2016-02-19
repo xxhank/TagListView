@@ -8,7 +8,7 @@
 
 import UIKit
 
-@IBDesignable
+//@IBDesignable
 public class TagView: UIButton {
     
     @IBInspectable var cornerRadius: CGFloat = 0 {
